@@ -1,0 +1,424 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Сценарная оценка территории — Байкальское городское поселение</title>
+  <meta name="description" content="Интерактивная техническая апробация сценарной оценки территории: нормативные ограничения, ландшафтная чувствительность и рекомендуемые режимы освоения.">
+  <link rel="stylesheet" href="styles.css">
+  <script defer src="data/data.js"></script>
+  <script defer src="app.js"></script>
+</head>
+<body>
+  <a class="skip-link" href="#main">Перейти к содержанию</a>
+
+  <div class="app-shell">
+  <header class="app-header">
+    <div class="header-inner">
+      <div class="brand">
+        <p class="eyebrow">НИР · техническая апробация</p>
+        <h1>Сценарная оценка территории</h1>
+        <p class="brand-subtitle">Байкальское городское поселение · сетка 500 × 500 м</p>
+      </div>
+      <div class="header-actions">
+        <button class="button button-quiet" type="button" data-view-link="method">Метод</button>
+        <button class="button button-quiet" type="button" data-view-link="data">Данные</button>
+      </div>
+    </div>
+  </header>
+
+  <div class="warning-banner" role="alert">
+    <strong>Демонстрационный статус.</strong>
+    <span>Веса, границы нормализации и пороги классов взяты из синтетической демонстрации НИР-2. Результаты не являются научной оценкой Байкальска, градостроительным решением или юридическим заключением.</span>
+  </div>
+
+  <nav class="view-tabs" aria-label="Разделы приложения">
+    <button type="button" class="tab is-active" data-view="map">Карта</button>
+    <button type="button" class="tab" data-view="compare">Сравнение</button>
+    <button type="button" class="tab" data-view="search">Подбор</button>
+    <button type="button" class="tab" data-view="experiment">Эксперимент</button>
+    <button type="button" class="tab" data-view="method">Метод</button>
+    <button type="button" class="tab" data-view="data">Данные</button>
+  </nav>
+
+  <main id="main" class="app-main">
+    <section id="view-map" class="view is-active" aria-labelledby="map-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="map-title">Карта сценария</h2>
+          <p>Выберите сценарий, слой и ячейку. Наведите курсор на ячейку, чтобы увидеть её данные, и нажмите, чтобы открыть карточку. Shift + клик добавляет ячейку к сравнению.</p>
+        </div>
+        <div class="scenario-switch" id="scenarioSwitch" role="group" aria-label="Сценарий освоения"></div>
+      </div>
+
+      <div class="map-layout">
+        <aside class="panel map-controls" aria-label="Настройки карты">
+          <h3>Слой</h3>
+          <div class="segmented vertical" id="layerSwitch">
+            <label><input type="radio" name="layer" value="recommended" checked> <span>Рекомендуемый режим</span></label>
+            <label><input type="radio" name="layer" value="norm"> <span>Нормативный статус</span></label>
+            <label><input type="radio" name="layer" value="landscape"> <span>Ландшафтная чувствительность</span></label>
+            <label><input type="radio" name="layer" value="raw"> <span>Исходный критерий</span></label>
+            <label><input type="radio" name="layer" value="conflict"> <span>Расхождения сценариев</span></label>
+          </div>
+
+          <div class="field" id="rawCriterionField" hidden>
+            <label for="rawCriterion">Критерий</label>
+            <select id="rawCriterion">
+              <option value="slope">Крутизна, °</option>
+              <option value="hydro">Удалённость от гидрографии, м</option>
+              <option value="natural">Доля природного покрова</option>
+              <option value="development">Расстояние до застройки, м</option>
+            </select>
+          </div>
+
+          <label class="check-row">
+            <input type="checkbox" id="dimUncalculated">
+            <span>Приглушить нерассчитанные ячейки</span>
+          </label>
+
+          <div class="map-buttons">
+            <button type="button" class="button button-secondary" id="zoomIn" aria-label="Приблизить">+</button>
+            <button type="button" class="button button-secondary" id="zoomOut" aria-label="Отдалить">−</button>
+            <button type="button" class="button button-secondary" id="resetView">Сбросить вид</button>
+          </div>
+
+          <div class="mini-note">
+            <strong>Ориентация:</strong> север сверху. Схематическая карта без подложки; координаты локальные, исходная система — EPSG:32648.
+          </div>
+
+          <div class="cell-search">
+            <label for="cellLookup">Найти ячейку по ID</label>
+            <div class="inline-form">
+              <input id="cellLookup" type="text" placeholder="r000084_c000052" autocomplete="off">
+              <button type="button" class="button button-primary" id="cellLookupButton">Найти</button>
+            </div>
+            <p class="field-hint" id="cellLookupHint"></p>
+          </div>
+        </aside>
+
+        <div class="map-stage panel">
+          <div class="map-toolbar">
+            <div>
+              <span class="map-title" id="mapLayerTitle">Рекомендуемый режим</span>
+              <span class="map-subtitle" id="mapLayerSubtitle"></span>
+            </div>
+            <div class="map-actions">
+              <button type="button" class="button button-quiet" id="copyViewLink">Ссылка на вид</button>
+            </div>
+          </div>
+          <div class="map-canvas" id="mapCanvas">
+            <svg id="map" role="img" aria-labelledby="mapSvgTitle mapSvgDesc" preserveAspectRatio="xMidYMid meet">
+              <title id="mapSvgTitle">Карта сетки сценарной оценки</title>
+              <desc id="mapSvgDesc">Интерактивная схема ячеек 500 на 500 метров с цветовой легендой.</desc>
+            </svg>
+            <div class="map-tooltip" id="mapTooltip" hidden></div>
+            <div class="map-scale" aria-hidden="true">
+              <span class="scale-bar"></span>
+              <span id="scaleLabel">5 км</span>
+            </div>
+            <div class="north-arrow" aria-hidden="true"><span>С</span></div>
+          </div>
+          <div class="legend" id="mapLegend"></div>
+          <p class="map-footnote" id="mapFootnote"></p>
+        </div>
+
+        <aside class="panel cell-panel" id="cellPanel" aria-live="polite"></aside>
+      </div>
+    </section>
+
+    <section id="view-compare" class="view" aria-labelledby="compare-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="compare-title">Сравнение</h2>
+          <p>Сравните выбранные ячейки в текущем сценарии и посмотрите, чем различаются четыре сценария.</p>
+        </div>
+        <div class="heading-actions">
+          <button type="button" class="button button-secondary" id="clearCompare">Очистить выбор</button>
+          <button type="button" class="button button-primary" id="exportCompare">Экспорт CSV</button>
+        </div>
+      </div>
+
+      <div class="grid-two">
+        <article class="panel">
+          <div class="panel-heading">
+            <h3>Выбранные ячейки</h3>
+            <span class="badge" id="compareCount">0</span>
+          </div>
+          <div id="compareCells"></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-heading">
+            <h3>Сводка по сценариям</h3>
+            <span class="muted">все 3468 ячеек</span>
+          </div>
+          <div id="scenarioSummary"></div>
+        </article>
+      </div>
+
+      <article class="panel">
+        <div class="panel-heading">
+          <h3>Одна ячейка — четыре сценария</h3>
+          <span class="muted" id="compareCellLabel">ячейка не выбрана</span>
+        </div>
+        <div id="cellScenarioCompare" class="empty-state">Выберите ячейку на карте или в таблице.</div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-heading">
+          <h3>Конфликты режимов</h3>
+          <div class="heading-actions">
+            <button type="button" class="button button-secondary" id="showConflictsOnMap">Показать на карте</button>
+          </div>
+        </div>
+        <div id="conflictSummary"></div>
+        <div id="conflictExamples"></div>
+      </article>
+    </section>
+
+    <section id="view-search" class="view" aria-labelledby="search-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="search-title">Автоматический подбор</h2>
+          <p>Поиск ячеек с минимальной относительной ландшафтной чувствительностью. Нормативный запрет и незавершённая проверка исключаются из рейтинга.</p>
+        </div>
+        <div class="heading-actions">
+          <button type="button" class="button button-secondary" id="exportSearch">Экспорт CSV</button>
+        </div>
+      </div>
+
+      <div class="grid-two search-grid">
+        <aside class="panel">
+          <h3>Параметры поиска</h3>
+          <div class="field">
+            <label for="searchScenario">Сценарий</label>
+            <select id="searchScenario"></select>
+          </div>
+          <div class="field">
+            <label for="searchBoundary">Положение ячейки</label>
+            <select id="searchBoundary">
+              <option value="all">Все ячейки</option>
+              <option value="interior">Только внутренние</option>
+              <option value="boundary">Только граничные</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="searchInside">Минимальная доля внутри территории: <output id="searchInsideValue">0%</output></label>
+            <input id="searchInside" type="range" min="0" max="100" step="5" value="0">
+          </div>
+          <div class="field">
+            <label for="searchMaxSi">Максимальный индекс (необязательно)</label>
+            <input id="searchMaxSi" type="number" min="0" max="1" step="0.01" placeholder="например, 0,5">
+          </div>
+          <div class="rule-box">
+            <strong>Правила рейтинга</strong>
+            <ul>
+              <li>ячейки с запретом не участвуют;</li>
+              <li>ячейки с неопределённым нормативным статусом (R2) не участвуют, пока индекс не рассчитан;</li>
+              <li>ячейки без полного набора критериев не участвуют;</li>
+              <li>сортировка по возрастанию индекса, затем по большей доле внутри территории.</li>
+            </ul>
+          </div>
+          <button type="button" class="button button-primary wide" id="runSearch">Найти ячейки с минимальной чувствительностью</button>
+          <p class="field-hint">Поиск автоматически пересчитывается при смене сценария. Кнопка применяет фильтры. Показаны все совпадающие минимумы с точностью сохранения индекса до 6 знаков.</p>
+        </aside>
+
+        <article class="panel">
+          <div class="panel-heading">
+            <h3>Результаты</h3>
+            <span class="badge" id="searchCount">0</span>
+          </div>
+          <div id="searchSummary" class="summary-strip"></div>
+          <div id="searchResults"></div>
+          <div class="notice notice-warning">
+            Минимальный индекс означает наименьшую относительную чувствительность по демонстрационной шкале. Это не разрешение на освоение и не юридическая рекомендация.
+          </div>
+        </article>
+      </div>
+    </section>
+
+    <section id="view-experiment" class="view" aria-labelledby="experiment-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="experiment-title">Эксперимент A–D</h2>
+          <p>Воспроизводимая проверка влияния нормативных ограничений на рейтинг и сравнение сценариев.</p>
+        </div>
+        <div class="heading-actions">
+          <a class="button button-secondary" href="data/experiment.csv" download>Скачать experiment.csv</a>
+        </div>
+      </div>
+
+      <div class="notice">Для эксперимента по ТЗ выберите вручную ячейки для жилищного и рекреационного сценариев, сравните их с результатами поиска и рассмотрите одну ячейку во всех сценариях. Шаблон отчёта находится в документации проекта (docs/experiment-template.md). Приведённый ниже дополнительный анализ A–D использует другие определения.</div>
+      <div class="experiment-definitions" id="experimentDefinitions"></div>
+
+      <div class="grid-two">
+        <article class="panel">
+          <div class="panel-heading">
+            <h3>Текущий сценарий</h3>
+            <span class="badge" id="experimentScenarioLabel"></span>
+          </div>
+          <div id="experimentCounts" class="metric-grid"></div>
+          <div id="experimentComparison"></div>
+        </article>
+
+        <article class="panel">
+          <div class="panel-heading">
+            <h3>Топ-10</h3>
+            <div class="segmented" id="experimentSwitch" role="group" aria-label="Вариант эксперимента">
+              <button type="button" data-experiment="A">A</button>
+              <button type="button" data-experiment="B">B</button>
+              <button type="button" data-experiment="C" class="is-active">C</button>
+            </div>
+          </div>
+          <div id="experimentTop"></div>
+          <p class="field-hint" id="experimentTopNote"></p>
+        </article>
+      </div>
+
+      <article class="panel">
+        <div class="panel-heading">
+          <h3>Ячейки R2: флаги без рейтинга</h3>
+          <span class="badge" id="experimentReviewCount">0</span>
+        </div>
+        <div id="experimentReview"></div>
+      </article>
+
+      <article class="panel">
+        <div class="panel-heading">
+          <h3>Сравнение сценариев D</h3>
+          <div class="heading-actions">
+            <button type="button" class="button button-secondary" id="experimentShowConflicts">Показать конфликты</button>
+          </div>
+        </div>
+        <div id="experimentCross" class="metric-grid"></div>
+        <div class="grid-two">
+          <div>
+            <h4>Пересечение топ-10</h4>
+            <div id="experimentOverlap"></div>
+          </div>
+          <div>
+            <h4>Примеры конфликтов</h4>
+            <div id="experimentConflicts"></div>
+          </div>
+        </div>
+      </article>
+
+      <article class="panel report-template">
+        <div class="panel-heading">
+          <h3>Шаблон отчёта по эксперименту</h3>
+          <span class="muted">краткие ответы сформированы по данным</span>
+        </div>
+        <div id="experimentReport"></div>
+      </article>
+    </section>
+
+    <section id="view-method" class="view" aria-labelledby="method-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="method-title">Метод и проверка</h2>
+          <p>Что именно считает приложение, какие параметры использованы и где проходят границы интерпретации.</p>
+        </div>
+      </div>
+
+      <article class="panel">
+        <h3>Последовательность метода</h3>
+        <ol class="method-steps">
+          <li>Выбрать сценарий освоения.</li>
+          <li>Проверить нормативную допустимость по правилам сценария.</li>
+          <li>Исключить запрещённые и непроверенные части; не рассчитывать для них чувствительность.</li>
+          <li>Рассчитать четыре ландшафтных критерия только для нормативно допустимых ячеек.</li>
+          <li>Нормализовать критерии, применить демонстрационные веса и получить индекс SI.</li>
+          <li>Назначить класс чувствительности по порогам 0,25 / 0,50 / 0,75.</li>
+          <li>Совместить нормативный статус и класс чувствительности в рекомендуемый режим.</li>
+        </ol>
+        <p class="notice notice-info">Нормативная проверка не является весом или слагаемым индекса. Запрет нельзя компенсировать низкой чувствительностью.</p>
+      </article>
+
+      <article class="panel">
+        <h3>Критерии, нормализация и веса</h3>
+        <div id="criteriaTable"></div>
+        <div id="weightsTable"></div>
+      </article>
+
+      <article class="panel">
+        <h3>Статусы и режимы</h3>
+        <div class="grid-two">
+          <div id="normStatusTable"></div>
+          <div id="modeTable"></div>
+        </div>
+      </article>
+
+      <article class="panel">
+        <h3>Проверка на синтетическом примере</h3>
+        <p>Расчёт воспроизводит сохранённые значения для ячеек A–E. Для ячейки D (R3) сохранённый индекс показан как диагностический: в основном интерфейсе для R3 индекс и рекомендация скрыты.</p>
+        <div id="syntheticCheck"></div>
+      </article>
+
+      <article class="panel">
+        <h3>Источники данных</h3>
+        <div id="sourcesTable"></div>
+      </article>
+
+      <article class="panel">
+        <h3>Ограничения и расхождения</h3>
+        <div id="limitationsList"></div>
+        <div id="contradictionsList"></div>
+      </article>
+    </section>
+
+    <section id="view-data" class="view" aria-labelledby="data-title">
+      <div class="section-heading">
+        <div>
+          <h2 id="data-title">Данные</h2>
+          <p>Сведения о наборе, источниках, лицензиях и способе обновления.</p>
+        </div>
+      </div>
+
+      <div class="grid-two">
+        <article class="panel">
+          <h3>Набор данных</h3>
+          <dl class="data-list" id="datasetInfo"></dl>
+        </article>
+        <article class="panel">
+          <h3>Файлы</h3>
+          <ul class="file-list">
+            <li><a href="data/data.json" download>data.json</a> — полный набор данных</li>
+            <li><a href="data/data.js" download>data.js</a> — тот же набор для запуска без сервера</li>
+            <li><a href="data/experiment.csv" download>experiment.csv</a> — топ-10 экспериментов A–C</li>
+          </ul>
+          <h4>Обновление</h4>
+          <pre><code>python3 tools/prepare_web_data.py --source "../../НИР/vs code/ver1"</code></pre>
+          <p class="field-hint">Скрипт использует только стандартную библиотеку Python. Исходные файлы не изменяются.</p>
+        </article>
+      </div>
+
+      <article class="panel">
+        <h3>Источники и лицензии</h3>
+        <div id="dataSourcesTable"></div>
+        <p class="attribution">© OpenStreetMap contributors, ODbL 1.0. ESA WorldCover 2021 v200, CC-BY-4.0. Нормативные сведения — первичный скрининг, не юридическое заключение.</p>
+      </article>
+
+      <article class="panel">
+        <h3>Происхождение проекта</h3>
+        <p>Проект создан на основе шаблона <code>python-package-boilerplate</code> (IDU, BSD-3-Clause). Исходная лицензия сохранена в файле <code>LICENSE</code>. Примеры и ссылки шаблона заменены содержанием этого проекта.</p>
+      </article>
+    </section>
+  </main>
+
+  <footer class="app-footer">
+    <div>
+      <strong>Сценарная оценка территории</strong>
+      <span>Техническая апробация · демонстрационные параметры НИР-2</span>
+    </div>
+    <div class="footer-links">
+      <a href="data/data.json" download>Данные</a>
+      <a href="data/experiment.csv" download>Эксперимент</a>
+      <span>© OpenStreetMap contributors · ESA WorldCover</span>
+    </div>
+  </footer>
+
+  </div>
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+</body>
+</html>
